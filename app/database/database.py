@@ -1,7 +1,7 @@
 """Database engine, session factory, and lifecycle helpers."""
 from __future__ import annotations
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import Config
 from app.database.models import Base
@@ -20,6 +20,14 @@ class Database:
         self.session_factory = async_sessionmaker(
             bind=self.engine, expire_on_commit=False, autoflush=False
         )
+
+    def session(self) -> AsyncSession:
+        """Return an async session context manager for database operations."""
+        return self.session_factory()
+
+    def get_session(self) -> AsyncSession:
+        """Alias for session()."""
+        return self.session_factory()
 
     async def create_tables(self) -> None:
         """Create all tables defined in Base metadata."""
