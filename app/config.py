@@ -29,6 +29,8 @@ class Config:
     session_ttl_minutes: int
     log_level: str
     environment: str
+    telegram_proxy: str | None = None
+    telegram_api_server: str | None = None
 
     @classmethod
     def from_env(cls) -> Config:
@@ -53,4 +55,6 @@ class Config:
             session_ttl_minutes=int(os.environ.get("SESSION_TTL_MINUTES", "30")),
             log_level=os.environ.get("LOG_LEVEL", "INFO"),
             environment=os.environ.get("ENVIRONMENT", "development"),
+            telegram_proxy=os.environ.get("TELEGRAM_PROXY") or None,
+            telegram_api_server=os.environ.get("TELEGRAM_API_SERVER") or None,
         )
