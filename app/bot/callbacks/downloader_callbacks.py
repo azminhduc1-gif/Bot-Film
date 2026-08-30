@@ -725,6 +725,16 @@ async def handle_downloader_callback(query: CallbackQuery, bot: Bot) -> None:
             ],
             "ffmpeg_location": get_ffmpeg_path(),
             "quiet": True,
+            "no_warnings": True,
+            "source_address": "0.0.0.0",
+            "socket_timeout": 30,
+            "retries": 5,
+            "http_headers": {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+                ),
+            },
         }
         try:
             await status_msg.edit_text(f"⬇️ <b>Đang tải bài hát từ SoundCloud...</b>\n\n🎵 <code>{title[:75]}</code>", parse_mode="HTML")

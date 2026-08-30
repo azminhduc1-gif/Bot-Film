@@ -390,8 +390,25 @@ def get_facebook_info_sync(url: str, cookie_path: str = "") -> dict[str, Any] | 
 
 def get_soundcloud_info_sync(url: str) -> dict[str, Any] | None:
     """Extract SoundCloud track metadata."""
+    ydl_opts: dict[str, Any] = {
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": False,
+        "skip_download": True,
+        "source_address": "0.0.0.0",  # Force IPv4 to avoid broken VPS IPv6 resets
+        "socket_timeout": 30,
+        "retries": 5,
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9,vi;q=0.8",
+        },
+    }
     try:
-        with yt_dlp.YoutubeDL({"quiet": True, "extract_flat": False}) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             if not info:
                 return None
