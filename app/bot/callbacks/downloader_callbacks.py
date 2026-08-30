@@ -20,6 +20,7 @@ from app.services.downloader import (
     split_media_sync,
     yt_dlp_download_sync,
 )
+from app.services.downloader.extractor import apply_impersonate_opts
 
 logger = get_logger(__name__)
 downloader_callback_router = Router(name="downloader_callback_router")
@@ -736,6 +737,7 @@ async def handle_downloader_callback(query: CallbackQuery, bot: Bot) -> None:
                 ),
             },
         }
+        apply_impersonate_opts(ydl_opts)
         try:
             await status_msg.edit_text(f"⬇️ <b>Đang tải bài hát từ SoundCloud...</b>\n\n🎵 <code>{title[:75]}</code>", parse_mode="HTML")
             await asyncio.to_thread(yt_dlp_download_sync, ydl_opts, url)

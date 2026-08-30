@@ -42,6 +42,16 @@ _MIX_PREFIXES = (
 )
 
 
+def apply_impersonate_opts(ydl_opts: dict[str, Any]) -> dict[str, Any]:
+    """Attach Chrome TLS/HTTP2 impersonation to bypass Cloudflare/SoundCloud blocks."""
+    try:
+        from yt_dlp.networking.impersonate import ImpersonateTarget
+        ydl_opts["impersonate"] = ImpersonateTarget.from_str("chrome")
+    except Exception:
+        pass
+    return ydl_opts
+
+
 def format_size(num_bytes: int) -> str:
     """Format bytes into human-readable B / KB / MB / GB."""
     n = float(num_bytes)
@@ -407,6 +417,7 @@ def get_soundcloud_info_sync(url: str) -> dict[str, Any] | None:
             "Accept-Language": "en-US,en;q=0.9,vi;q=0.8",
         },
     }
+    apply_impersonate_opts(ydl_opts)
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)

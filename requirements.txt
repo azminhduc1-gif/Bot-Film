@@ -10,8 +10,9 @@ redis==5.1.1
 SQLAlchemy==2.0.36
 yarl==1.15.2
 
-# Downloader engine dependencies
+# Downloader engine dependencies & Cloudflare TLS bypass
 yt-dlp>=2024.8.6
+curl-cffi>=0.7.0
 requests>=2.31.0
 imageio-ffmpeg>=0.5.1
 aiofiles>=24.1.0
