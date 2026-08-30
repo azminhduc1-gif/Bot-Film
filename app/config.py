@@ -31,6 +31,7 @@ class Config:
     environment: str
     telegram_proxy: str | None = None
     telegram_api_server: str | None = None
+    download_proxy: str | None = None
 
     @classmethod
     def from_env(cls) -> Config:
@@ -57,4 +58,5 @@ class Config:
             environment=os.environ.get("ENVIRONMENT", "development"),
             telegram_proxy=os.environ.get("TELEGRAM_PROXY") or None,
             telegram_api_server=os.environ.get("TELEGRAM_API_SERVER") or None,
+            download_proxy=os.environ.get("DOWNLOAD_PROXY") or os.environ.get("HTTPS_PROXY") or None,
         )

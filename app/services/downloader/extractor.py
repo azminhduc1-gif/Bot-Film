@@ -145,16 +145,30 @@ def is_regular_playlist(url: str) -> bool:
 
 async def get_tiktok_info(url: str) -> dict[str, Any] | None:
     """Extract TikTok metadata using TikWM (Tier 1) and Douyin.wtf (Tier 2)."""
+    proxy = get_download_proxy()
+
+    def _tikwm_request():
+        try:
+            from curl_cffi import requests as c_requests
+            kwargs: dict[str, Any] = {
+                "params": {"url": url, "hd": 1},
+                "headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36", "Referer": "https://www.tikwm.com/"},
+                "impersonate": "chrome120",
+                "timeout": 25,
+            }
+            if proxy:
+                kwargs["proxy"] = proxy
+                kwargs["verify"] = False
+            return c_requests.get(TIKWM_API_URL, **kwargs)
+        except Exception:
+            proxies = {"http": proxy, "https": proxy} if proxy else None
+            return requests.get(TIKWM_API_URL, params={"url": url, "hd": 1}, timeout=25, proxies=proxies)
+
     # Tier 1: TikWM
     for attempt in range(1, 3):
         try:
             logger.info("🔍 [TikWM] Query attempt %d/2 for %s", attempt, url[:60])
-            response = await asyncio.to_thread(
-                requests.get,
-                TIKWM_API_URL,
-                params={"url": url, "hd": 1},
-                timeout=25,
-            )
+            response = await asyncio.to_thread(_tikwm_request)
             if response.status_code == 200:
                 data_json = response.json()
                 if data_json and data_json.get("code") == 0:
@@ -178,13 +192,24 @@ async def get_tiktok_info(url: str) -> dict[str, Any] | None:
 
     # Tier 2: api.douyin.wtf
     logger.info("🔄 Falling back to Tier 2 TikTok API (douyin.wtf)...")
+    def _douyin_request():
+        try:
+            from curl_cffi import requests as c_requests
+            kwargs = {
+                "params": {"url": url, "minimal": "false"},
+                "impersonate": "chrome120",
+                "timeout": 20,
+            }
+            if proxy:
+                kwargs["proxy"] = proxy
+                kwargs["verify"] = False
+            return c_requests.get("https://api.douyin.wtf/api/hybrid/video_data", **kwargs)
+        except Exception:
+            proxies = {"http": proxy, "https": proxy} if proxy else None
+            return requests.get("https://api.douyin.wtf/api/hybrid/video_data", params={"url": url, "minimal": "false"}, timeout=20, proxies=proxies)
+
     try:
-        res = await asyncio.to_thread(
-            requests.get,
-            "https://api.douyin.wtf/api/hybrid/video_data",
-            params={"url": url, "minimal": "false"},
-            timeout=20,
-        )
+        res = await asyncio.to_thread(_douyin_request)
         if res.status_code == 200:
             data_json = res.json()
             if data_json.get("code") == 200 or "data" in data_json or "video" in data_json:
@@ -398,12 +423,23 @@ def get_facebook_info_sync(url: str, cookie_path: str = "") -> dict[str, Any] | 
         return None
 
 
+def get_download_proxy() -> str | None:
+    """Read proxy configuration from environment variables."""
+    return os.environ.get("DOWNLOAD_PROXY") or os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY") or None
+
+
 def get_soundcloud_info_sync(url: str) -> dict[str, Any] | None:
     """Extract SoundCloud track metadata with direct stream URL resolution."""
+    proxy = get_download_proxy()
+    req_kwargs: dict[str, Any] = {"impersonate": "chrome120", "timeout": 25}
+    if proxy:
+        req_kwargs["proxy"] = proxy
+        req_kwargs["verify"] = False
+
     # Method 1: Direct extraction via curl_cffi & hydration data (Bypasses Cloudflare & SSL errors 100%)
     try:
         from curl_cffi import requests as c_requests
-        resp = c_requests.get(url, impersonate="chrome120", timeout=25)
+        resp = c_requests.get(url, **req_kwargs)
         if resp.status_code == 200 and "window.__sc_hydration" in resp.text:
             import json
             match = re.search(r"window\.__sc_hydration\s*=\s*(\[.*?\]);\s*</script>", resp.text)
@@ -427,7 +463,11 @@ def get_soundcloud_info_sync(url: str) -> dict[str, Any] | None:
                         # Prefer progressive mp3 transcoding
                         prog = next((t for t in trans if t.get("format", {}).get("protocol") == "progressive"), trans[0])
                         try:
-                            s_res = c_requests.get(prog["url"], params={"client_id": client_id}, impersonate="chrome120", timeout=15)
+                            s_kwargs = {"params": {"client_id": client_id}, "impersonate": "chrome120", "timeout": 15}
+                            if proxy:
+                                s_kwargs["proxy"] = proxy
+                                s_kwargs["verify"] = False
+                            s_res = c_requests.get(prog["url"], **s_kwargs)
                             if s_res.status_code == 200:
                                 stream_url = s_res.json().get("url")
                         except Exception as e:
