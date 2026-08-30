@@ -387,6 +387,7 @@ async def handle_social_url_download(message: Message, bot: Bot) -> bool:
                 "title": sc_info["title"],
                 "uploader": sc_info.get("uploader", "Không rõ"),
                 "duration": sc_info.get("duration"),
+                "stream_url": sc_info.get("stream_url"),
             }
         )
         caption = (

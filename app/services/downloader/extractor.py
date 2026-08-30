@@ -399,13 +399,58 @@ def get_facebook_info_sync(url: str, cookie_path: str = "") -> dict[str, Any] | 
 
 
 def get_soundcloud_info_sync(url: str) -> dict[str, Any] | None:
-    """Extract SoundCloud track metadata."""
+    """Extract SoundCloud track metadata with direct stream URL resolution."""
+    # Method 1: Direct extraction via curl_cffi & hydration data (Bypasses Cloudflare & SSL errors 100%)
+    try:
+        from curl_cffi import requests as c_requests
+        resp = c_requests.get(url, impersonate="chrome120", timeout=25)
+        if resp.status_code == 200 and "window.__sc_hydration" in resp.text:
+            import json
+            match = re.search(r"window\.__sc_hydration\s*=\s*(\[.*?\]);\s*</script>", resp.text)
+            if match:
+                data = json.loads(match.group(1))
+                sound = next((d["data"] for d in data if d.get("hydratable") == "sound"), None)
+                if sound:
+                    title = sound.get("title", "Bài hát SoundCloud")
+                    user = sound.get("user", {})
+                    uploader = user.get("username") or user.get("full_name") or "Nghệ sĩ không rõ"
+                    duration_ms = sound.get("duration") or 0
+                    duration = duration_ms / 1000.0 if duration_ms else None
+                    thumbnail = sound.get("artwork_url") or user.get("avatar_url")
+                    if thumbnail and "-large" in thumbnail:
+                        thumbnail = thumbnail.replace("-large", "-t500x500")
+
+                    client_id = next((d["data"].get("id") for d in data if d.get("hydratable") == "apiClient"), None)
+                    stream_url = None
+                    trans = sound.get("media", {}).get("transcodings", [])
+                    if trans and client_id:
+                        # Prefer progressive mp3 transcoding
+                        prog = next((t for t in trans if t.get("format", {}).get("protocol") == "progressive"), trans[0])
+                        try:
+                            s_res = c_requests.get(prog["url"], params={"client_id": client_id}, impersonate="chrome120", timeout=15)
+                            if s_res.status_code == 200:
+                                stream_url = s_res.json().get("url")
+                        except Exception as e:
+                            logger.warning("Could not resolve stream URL: %s", e)
+
+                    return {
+                        "title": title,
+                        "uploader": uploader,
+                        "thumbnail": thumbnail,
+                        "duration": duration,
+                        "url": url,
+                        "stream_url": stream_url,
+                    }
+    except Exception as exc:
+        logger.warning("Direct curl_cffi SoundCloud extraction failed: %s", exc)
+
+    # Method 2: Fallback to yt-dlp
     ydl_opts: dict[str, Any] = {
         "quiet": True,
         "no_warnings": True,
         "extract_flat": False,
         "skip_download": True,
-        "source_address": "0.0.0.0",  # Force IPv4 to avoid broken VPS IPv6 resets
+        "source_address": "0.0.0.0",
         "socket_timeout": 30,
         "retries": 5,
         "http_headers": {

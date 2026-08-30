@@ -740,7 +740,12 @@ async def handle_downloader_callback(query: CallbackQuery, bot: Bot) -> None:
         apply_impersonate_opts(ydl_opts)
         try:
             await status_msg.edit_text(f"⬇️ <b>Đang tải bài hát từ SoundCloud...</b>\n\n🎵 <code>{title[:75]}</code>", parse_mode="HTML")
-            await asyncio.to_thread(yt_dlp_download_sync, ydl_opts, url)
+            stream_url = task.get("stream_url")
+            if stream_url:
+                await asyncio.to_thread(download_file_sync, stream_url, temp_mp3)
+            else:
+                await asyncio.to_thread(yt_dlp_download_sync, ydl_opts, url)
+
             if not os.path.exists(temp_mp3):
                 candidates = [f for f in glob.glob(f"{temp_base}.*") if not f.endswith(".part")]
                 if not candidates:
