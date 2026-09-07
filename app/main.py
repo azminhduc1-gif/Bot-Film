@@ -43,7 +43,7 @@ def create_bot(config: Config) -> Bot:
     timeout_sec = max(30.0, float(config.request_timeout_seconds))
     if config.telegram_proxy or config.telegram_api_server:
         api = (
-            TelegramAPIServer.from_base(config.telegram_api_server)
+            TelegramAPIServer.from_base(config.telegram_api_server, is_local=True)
             if config.telegram_api_server
             else None
         )

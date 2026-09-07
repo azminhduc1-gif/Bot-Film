@@ -14,11 +14,22 @@ from app.services.downloader.ffmpeg_helper import get_ffmpeg_path
 
 logger = get_logger(__name__)
 
-MAX_FILE_SIZE = 49 * 1024 * 1024  # 49 MB Telegram limit
+def get_max_file_size() -> int:
+    """Return max file size in bytes.
+
+    If TELEGRAM_API_SERVER is configured (Local Bot API), allow up to 2GB (1.95 GB).
+    Otherwise, default to 49 MB for standard Telegram Cloud API limit.
+    """
+    if os.environ.get("TELEGRAM_API_SERVER"):
+        return 1999 * 1024 * 1024
+    return 49 * 1024 * 1024
+
+
+MAX_FILE_SIZE = get_max_file_size()
 
 
 def split_media_sync(input_file: str, is_video: bool) -> list[str]:
-    """Split media file if it exceeds Telegram 49MB limit.
+    """Split media file if it exceeds Telegram file size limit.
 
     Video -> <= 180s per chunk
     Audio -> <= 600s per chunk

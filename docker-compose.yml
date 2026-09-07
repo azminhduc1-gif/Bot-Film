@@ -1,6 +1,20 @@
 version: "3.9"
 
 services:
+  telegram-bot-api:
+    image: aiogram/telegram-bot-api:latest
+    container_name: kkphim-telegram-api
+    restart: unless-stopped
+    environment:
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
+      TELEGRAM_LOCAL: "1"
+    volumes:
+      - telegram_bot_api_data:/var/lib/telegram-bot-api
+      - ./tmp:/app/tmp
+    ports:
+      - "8081:8081"
+
   bot:
     build: .
     container_name: kkphim-bot
@@ -10,14 +24,18 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/kkphim_bot
       - REDIS_URL=redis://redis:6379/0
+      - TELEGRAM_API_SERVER=http://telegram-bot-api:8081
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
+      telegram-bot-api:
+        condition: service_started
     volumes:
       - ./user_cookies:/app/user_cookies
       - ./tmp:/app/tmp
+      - telegram_bot_api_data:/var/lib/telegram-bot-api
 
   db:
     image: postgres:16-alpine
@@ -45,3 +63,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  telegram_bot_api_data:
